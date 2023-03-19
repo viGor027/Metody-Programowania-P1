@@ -97,8 +97,13 @@
           [else
             (cons (get-col (car cols) (table-schema tab)) (get-schema (rest cols) tab))])}
 
+{define (parse-row row n-schema o-schema)
+	null
+}
+
 (define (table-project cols tab)
-	(table (get-schema cols) ()); uzupelnic o wiersze z wyjętymi danyi kolumnami - iterowac się jednoczesnie po początkowym schemacie i wierszach i w momencie, gdy natrafimy na dobrą kolumne to ją zwracać
+	;(table (get-schema cols) ()); uzupelnic o wiersze z wyjętymi danyi kolumnami - iterowac się jednoczesnie po początkowym schemacie i wierszach i w momencie, gdy natrafimy na dobrą kolumne to ją zwracać
+	null
 	)
 
 ; Sortowanie
@@ -122,9 +127,20 @@
 
 ; Zmiana nazwy
 
-(define (table-rename col ncol tab)
-	null
-	)
+{define (table-rename col ncol tab)
+    (define schemat (table-schema tab))
+    (define (helper col ncol schema)
+        (cond [(equal? (column-info-name (car schema)) col)
+                (cons (column-info ncol (column-info-type (car schema))) (rest schema))
+              ]
+              [else 
+                (cons (car schema) (helper col ncol (rest schema)))
+              ]
+        )
+    )
+    (table (helper col ncol schemat) (table-rows tab))
+    
+}
 
 ; Złączenie kartezjańskie
 
