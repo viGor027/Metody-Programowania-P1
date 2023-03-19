@@ -144,12 +144,34 @@
 
 ; Złączenie kartezjańskie
 
-(define (table-cross-join tab1 tab2)
-	null
+{define (cross row table-rows) ; funkcja łącząca dany wiersz z każdym wierszem z table-rows
+	(define (helper row table-rows acc)
+		(cond [(null? table-rows) acc]
+			  [else
+				(helper row (cdr table-rows) (append acc (list (append row (car table-rows)))))
+			  ]	  
+		)
 	)
+	(helper row table-rows (list))
+}
+
+{define (table-cross-join tab1 tab2) ; funkcja właściwa
+	(define rows-tab1 (table-rows tab1))
+	(define rows-tab2 (table-rows tab2))
+	(define (helper tabs1 tabs2 acc)
+		(cond [(null? tabs1) acc]
+			  [else 
+				(helper (rest tabs1) tabs2 (append acc (cross (car tabs1) tabs2)))
+			  ]
+		)
+	)
+	(table (append (table-schema tab1) (table-schema tab2)) (helper rows-tab1 rows-tab2 (list)) )
+}
 
 ; Złączenie
 
 (define (table-natural-join tab1 tab2)
 	null
 	)
+
+(table-cross-join cities countries)

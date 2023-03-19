@@ -5,3 +5,6 @@
 (append (append '() (list(car moja)))  (list (car(rest moja))))
 
 (list)
+
+(append '() '(1 2 3))
+(append (list) '(1 2 3))
