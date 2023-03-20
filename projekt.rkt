@@ -98,13 +98,30 @@
             (cons (get-col (car cols) (table-schema tab)) (get-schema (rest cols) tab))])}
 
 {define (parse-row row n-schema o-schema)
-	null
+    (define (helper row n-schema o-schema acc)
+        (cond [(or (null? n-schema) (null? o-schema)) acc]
+              [(equal? (column-info-name (car o-schema)) (column-info-name (car n-schema))) 
+                (helper (rest row) (rest n-schema) (rest o-schema) (append acc (list (car row))))
+              ]
+              [else
+                (helper (rest row) n-schema (rest o-schema) acc)
+              ]
+        
+        )
+    )
+    (helper row n-schema o-schema (list))
 }
 
 (define (table-project cols tab)
-	;(table (get-schema cols) ()); uzupelnic o wiersze z wyjętymi danyi kolumnami - iterowac się jednoczesnie po początkowym schemacie i wierszach i w momencie, gdy natrafimy na dobrą kolumne to ją zwracać
-	null
+	(define (helper rows acc)
+		(cond [(null? rows) acc]
+			  [else
+			  	(helper (rest rows) (append acc (list (parse-row (car rows) (get-schema cols tab) (table-schema tab)))))
+			  ]
+		)
 	)
+	(table (get-schema cols tab) (helper (table-rows tab) (list))); uzupelnic o wiersze z wyjętymi danyi kolumnami - iterowac się jednoczesnie po początkowym schemacie i wierszach i w momencie, gdy natrafimy na dobrą kolumne to ją zwracać
+)
 
 ; Sortowanie
 
@@ -174,4 +191,18 @@
 	null
 	)
 
-(table-cross-join cities countries)
+(define (print-table tab) ; Funkcja pomocnicza
+  (define (print-col-names t)
+    (cond[(null? t) (display "\n")]
+         [else (display (column-info-name (car t)))
+               (display ",  ")
+               (print-col-names (cdr t))]))
+  (define (print-rows t)
+    (cond[(null? t) 
+            (display "\n")]
+         [else 
+            (display (car t)) 
+            (display "\n") 
+            (print-rows (cdr t))]))
+  (print-col-names (table-schema tab))
+  (print-rows (table-rows tab))) ;table-rows daje mi listę z rekordami w tabeli
