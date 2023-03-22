@@ -124,6 +124,10 @@
 )
 
 ; Sortowanie
+{define (find-min rows cols rows-schema)
+	
+	null
+}
 
 (define (table-sort cols tab)
 	null
@@ -206,3 +210,7 @@
             (print-rows (cdr t))]))
   (print-col-names (table-schema tab))
   (print-rows (table-rows tab))) ;table-rows daje mi listę z rekordami w tabeli
+
+(define schema (table-schema cities))
+
+(equal? (column-info-name (car schema)) (car '(city costam)))
