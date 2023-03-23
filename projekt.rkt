@@ -130,8 +130,38 @@
 }
 
 (define (table-sort cols tab)
-	null
+  ;zamienia podany element na stringa
+  ;rozpotrujemu prawdę i fałsz w kolejności leksykograficznej tak jak stringi
+  (define (el->str el)
+    (cond[(boolean? el) (if el "T" "F")] 
+         [(number? el) (number->string el)]
+         [(symbol? el) (symbol->string el)]
+         [else el]
 	)
+  )
+  
+  ;bierze kolumne wiersza i zwraca ją w stringu
+  (define (col-of-row->string cols exact-col row)
+    (cond[(equal? (column-info-name (car cols)) exact-col)
+            (el->str (car row))]
+         [else
+            (col-of-row->string (cdr cols) exact-col (cdr row))]))
+
+  ;sklei wszystkie podane kolumny wiersza do strigna
+  (define (glue row cols-to-glue acc)
+    (cond[(null? cols-to-glue) acc]
+         [else
+          (glue row (cdr cols-to-glue) (string-append acc (col-of-row->string (table-schema tab) (car cols-to-glue) row)))
+		 ]
+	))
+
+  ;składa poprzednie funkcje, żeby w sorcie było czytelnie
+  (define (tool element)
+    (glue element cols ""))
+
+  (table
+    (table-schema tab)
+    (sort (table-rows tab) #:key tool string<?)))
 
 ; Selekcja
 
@@ -143,7 +173,19 @@
 (define-struct lt-f (name val))
 
 (define (table-select form tab)
-	null
+
+		{define (form-to-p? form)
+			(cond [(and-f? form) ]
+				  [(or-f? form) ]
+				  [(not-f? form) ]
+				  [(eq-f? form) ]
+				  [(eq2-f? form) ]
+				  [(lt-f? form) ]
+				  [else form]
+			)
+		}
+
+
 	)
 
 ; Zmiana nazwy
@@ -209,8 +251,10 @@
             (display "\n") 
             (print-rows (cdr t))]))
   (print-col-names (table-schema tab))
-  (print-rows (table-rows tab))) ;table-rows daje mi listę z rekordami w tabeli
+  (print-rows (table-rows tab)))
 
 (define schema (table-schema cities))
 
 (equal? (column-info-name (car schema)) (car '(city costam)))
+
+(table-sort '(city country) cities)

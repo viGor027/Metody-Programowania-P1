@@ -46,7 +46,7 @@
                 )
               ]
               [else 
-                (helper (rest row1) (rest row2) (rest cols) (rest row-schema) acc1 acc2)
+                (helper (rest row1) (rest row2) (rest cols) (rest row-schema) acc1 acc2) ; powinno tu być cols zamiast (rest cols), ale to wyrzuca contract violation
               ]
         )
     )
@@ -61,4 +61,3 @@
 ; powinno zwrócić 2 razy Berlin
 
 (p>?  "Berlin" "Berlin")
-
