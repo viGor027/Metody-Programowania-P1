@@ -31,6 +31,23 @@
     )
 }
 
-(find-index "city" schema)
+
+; {define (in-1-and-2 tab1-schema tab2-schema)
+; 		(define (helper tab1-schema tab2-schema acc)
+; 			(cond [(null? tab1-schema) acc]
+; 				  [else
+; 					(if (equal? (column-info-name (car tab1-schema)) (column-info-name (car tab2-schema)))
+; 						(helper (rest tab1-schema) tab2-schema (append (list (column-info-name (car tab1-schema))) acc))
+; 						(helper (rest tab1-schema) tab2-schema acc)
+; 					)
+; 				  ]
+; 			)
+; 		)
+; 	}
+
+
+(string->symbol (string-append (symbol->string 'city) "2"))
+
+'(1 2 3 4)
 
 

@@ -46,13 +46,6 @@
 (define (empty-table columns) (table columns '()))
 
 ; Wstawianie
-
-; sprawdzenie poprawnośći;
-;   - czy liczba kolumn się zgadza
-;   - czy elementy są właściwych typów
-;   - w przypadku niezgodności zakańczamy procedure błędem
-;     (wywołanie error)
-;   - kolejność wierszy po wstawieniu nieistotna
 {define (list-len lista) ; funkcja sprawdzająca zgodność ilości pól
 		(cond [(null? lista) 0]
 					[else
@@ -124,11 +117,6 @@
 )
 
 ; Sortowanie
-{define (find-min rows cols rows-schema)
-	
-	null
-}
-
 (define (table-sort cols tab)
   ;zamienia podany element na stringa
   ;rozpotrujemu prawdę i fałsz w kolejności leksykograficznej tak jak stringi
@@ -173,19 +161,59 @@
 (define-struct lt-f (name val))
 
 (define (table-select form tab)
-
-		{define (form-to-p? form)
-			(cond [(and-f? form) ]
-				  [(or-f? form) ]
-				  [(not-f? form) ]
-				  [(eq-f? form) ]
-				  [(eq2-f? form) ]
-				  [(lt-f? form) ]
+		; znajduje odpowiednią kulumna danego wiersza i zwraca jej zawartość
+		{define (get-col-name row col schema)
+			(cond [(null? schema) (error "nie znaleziono kolumny")] 
+				  [(equal? col (column-info-name (car schema))) (car row)]
+				  [else (get-col-name (rest row) col (rest schema))]
+			)
+		}
+		; sprawdza czy dany wiersz spełnia warunek
+		{define (form-to-p? form row)
+			(cond [(and-f? form) 
+					(and (form-to-p? (and-f-l form) row) (form-to-p? (and-f-r form) row))
+				  ]
+				  [(or-f? form) 
+				  	(or (form-to-p? (and-f-l form) row) (form-to-p? (and-f-r form) row))
+				  ]
+				  [(not-f? form) 
+				  	(not (form-to-p? (not-f-e form) row))
+				  ]
+				  [(eq-f? form) 
+				  	(equal? (eq-f-val form) (get-col-name row (eq-f-name form) (table-schema tab)))
+				  ]
+				  [(eq2-f? form) 
+				  	(equal? 
+						(get-col-name row (eq2-f-name form) (table-schema tab))
+						(get-col-name row (eq2-f-name2 form) (table-schema tab))
+					)
+				  ]
+				  [(lt-f? form) 
+				  	(<						
+						(get-col-name row (lt-f-name form) (table-schema tab))
+						(lt-f-val form)
+					)
+				  ]
 				  [else form]
 			)
 		}
 
+		;przechodzi przez wszystkie wiersze i zwraca liste tych wierszy, które spełniają formułe
+		{define (get-rows formula rows)
+			(define (helper formula rows acc)
+				(cond [(null? rows) acc]
+					  [else
+					  	(if (form-to-p? formula (car rows))
+							(helper formula (rest rows) (append (list (car rows)) acc))
+							(helper formula (rest rows) acc)
+						)
+					  ]
+				)
+			)
+			(helper formula rows '())
+		}
 
+	(table (table-schema tab) (get-rows form (table-rows tab)))
 	)
 
 ; Zmiana nazwy
@@ -234,8 +262,69 @@
 ; Złączenie
 
 (define (table-natural-join tab1 tab2)
-	null
+	;;;PIERWSZA PAUZA
+	;zamiena kolumny tabeli w liste
+	(define (columns->list tab)
+		(define (helper cols acc)
+			(cond [(null? cols) acc]
+				  [else
+				  	(helper (rest cols) (append (list (column-info-name (car cols))) acc))
+				  ]
+			)
+		)
+		(helper (table-schema tab) empty)
 	)
+	; funkcja znajdująca część wpsólną kolumn pierwszej i drugiej tabeli
+	(define (get-repeats t1 t2)
+		(set-intersect (columns->list t1) (columns->list t2))
+	)
+
+	;funkcja zamieniająca nazwy column w tabeli2, które są również w tabeli1(!!!zwraca zmienioną tabele2!!!)
+	(define (rename-repetitions reps)
+		(define (helper reps acc)
+			(cond [(null? reps) acc]
+				  [else
+				  	(helper (rest reps)
+					 (table-rename (car reps) (string->symbol (string-append (symbol->string (car reps)) "2")) acc) )
+				  ]
+			)
+		)
+	(helper reps tab2)
+	)
+	;;;KONIEC PIERWSZEJ PAUZY
+
+	;;;DRUGA/TRZECIA PAUZA
+	(define cross-with-reps (table-cross-join tab1 (rename-repetitions (get-repeats tab1 tab2)))) ; tabela z drugiej pauzy
+	
+	(define (get-equal-rows-by-col reps) ; trzecia pauza
+		(define (helper reps acc)
+			(cond [(null? reps) acc]
+				  [else 
+				  	(helper 
+						(rest reps)
+						(append acc (table-rows (table-select (eq2-f (car reps) (string->symbol (string-append (symbol->string (car reps)) "2"))) cross-with-reps)))
+					)
+				  ]
+			)
+		)
+		(helper reps empty)
+	)
+	
+	(define (no-renamed-cols-list) ; tworzy liste kolumn, ale bez kolumn, których nazwa została zmieniona
+		(define cols-with-reps (reverse (columns->list cross-with-reps)))
+		(define repeated-cols (get-repeats tab1 tab2))
+		(define (helper rep-cols cols-w-reps)
+			(cond [(null? rep-cols) cols-w-reps]
+				  [else
+				  	(helper (rest rep-cols) (remove (string->symbol (string-append (symbol->string (car rep-cols)) "2")) cols-w-reps))
+				  ]
+			)
+		)
+		(helper repeated-cols cols-with-reps)
+	)
+	(define 3cia (table (table-schema cross-with-reps) (get-equal-rows-by-col (get-repeats tab1 tab2)))) ; tabela z trzeciej pauzy
+	(table-project (no-renamed-cols-list) 3cia)
+)
 
 (define (print-table tab) ; Funkcja pomocnicza
   (define (print-col-names t)
@@ -253,8 +342,5 @@
   (print-col-names (table-schema tab))
   (print-rows (table-rows tab)))
 
-(define schema (table-schema cities))
 
-(equal? (column-info-name (car schema)) (car '(city costam)))
-
-(table-sort '(city country) cities)
+(print-table (table-natural-join cities countries))
