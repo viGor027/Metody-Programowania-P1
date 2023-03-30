@@ -1,21 +1,5 @@
 #lang racket
 
-(provide (struct-out column-info)
-				 (struct-out table)
-				 (struct-out and-f)
-				 (struct-out or-f)
-				 (struct-out not-f)
-				 (struct-out eq-f)
-				 (struct-out eq2-f)
-				 (struct-out lt-f)
-				 table-insert
-				 table-project
-				 table-sort
-				 table-select
-				 table-rename
-				 table-cross-join
-				 table-natural-join)
-
 (define-struct column-info (name type) #:transparent)
 
 (define-struct table (schema rows) #:transparent)
@@ -86,48 +70,62 @@
 
 ; Projekcja
 
-{define (get-col col tab-schema) ; funkcja znajdująca daną kolumne
-    (cond [(equal? col (column-info-name (car tab-schema)))
-            (column-info col (column-info-type (car tab-schema)))]
-          [else 
-            (get-col col (rest tab-schema))])}
-
-{define (get-schema cols tab) ; funkcja tworząca schemat kolumn tabeli
-    (cond [(null? cols) null]
-          [else
-            (cons (get-col (car cols) (table-schema tab)) (get-schema (rest cols) tab))])}
-
-{define (parse-row row n-schema o-schema)
-    (define (helper row n-schema o-schema acc)
-        (cond [(or (null? n-schema) (null? o-schema)) acc]
-              [(equal? (column-info-name (car o-schema)) (column-info-name (car n-schema))) 
-                (helper (rest row) (rest n-schema) (rest o-schema) (append acc (list (car row))))
-              ]
-              [else
-                (helper (rest row) n-schema (rest o-schema) acc)
-              ]
-        
-        )
-    )
-    (helper row n-schema o-schema (list))
+;zwraca index konkretnej kolumny w schemacie
+; pierwszy element ma zerowy index
+{define (get-index col schema acc)
+	(cond [(equal? col (column-info-name (car schema))) acc]
+		  [else
+		  	(get-index col (rest schema) (+ 1 acc))
+		  ]
+	)
 }
-
-(define (table-project cols tab)
-	(define (helper rows acc)
-		(cond [(null? rows) acc]
+;zwraca liste index'ów kolumn
+{define (get-indexes cols schema)
+	(cond [(empty? cols) null]
+		  [else 
+		  	(cons (get-index (car cols) schema 0) (get-indexes (rest cols) schema))
+		  ]
+	)
+}
+; zwraca schemat tabeli po projekcji
+{define (get-schema inds schema)
+	(define (helper inds schema acc)
+		(cond [(null? inds) acc]
 			  [else
-			  	(helper (rest rows) (append acc (list (parse-row (car rows) (get-schema cols tab) (table-schema tab)))))
+			  	(helper (rest inds) schema (append acc (list (list-ref schema (car inds)))))
 			  ]
 		)
 	)
-	(table (get-schema cols tab) (helper (table-rows tab) (list))); uzupelnic o wiersze z wyjętymi danyi kolumnami - iterowac się jednoczesnie po początkowym schemacie i wierszach i w momencie, gdy natrafimy na dobrą kolumne to ją zwracać
+	(helper inds schema '())
+}
+
+{define (parse-row inds row)
+	(cond [(null? inds) null]
+		  [else 
+		  	(cons (list-ref row (car inds)) (parse-row (rest inds) row))
+		  ]
+	)
+}
+
+{define (get-cols inds rows)
+	(cond [(null? rows) null]
+		  [else
+		  	(cons (parse-row inds (car rows)) (get-cols inds (rest rows)))
+		  ]
+	)
+}
+
+(define (table-project cols tab)
+
+	
+	(define indexes (sort (get-indexes cols (table-schema tab)) <))
+	(define new-schema (get-schema indexes (table-schema tab)))
+	(define new-rows (get-cols indexes (table-rows tab)))
+	(table new-schema new-rows)
+
 )
 
 ; Sortowanie
-{define (find-min rows cols rows-schema)
-	
-	null
-}
 
 (define (table-sort cols tab)
   ;zamienia podany element na stringa
@@ -326,5 +324,4 @@
   (print-col-names (table-schema tab))
   (print-rows (table-rows tab)))
 
-
-(print-table (table-cross-join cities countries))
+(print-table (table-project '(country city) cities))
