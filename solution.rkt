@@ -178,6 +178,12 @@
 (define-struct eq2-f (name name2))
 (define-struct lt-f (name val))
 
+ (define (get-< left right)
+    (cond[(and (string? left) (string? right)) string<?]
+         [(and (symbol? left) (symbol? right)) symbol<?]
+         [(and (boolean? left) (boolean? right)) (lambda (l r)(if (not l) r #f))]
+         [else <]))
+		  
 (define (table-select form tab)
 		; znajduje odpowiednią kulumna danego wiersza i zwraca jej zawartość
 		{define (get-col-name row col schema)
@@ -207,12 +213,13 @@
 					)
 				  ]
 				  [(lt-f? form) 
-				  	(<						
+				  	((get-<
+						(get-col-name row (lt-f-name form) (table-schema tab))
+						(lt-f-val form))
 						(get-col-name row (lt-f-name form) (table-schema tab))
 						(lt-f-val form)
-					)
+					)	
 				  ]
-				  ;[else form]
 			)
 		}
 
@@ -361,4 +368,3 @@
   (print-col-names (table-schema tab))
   (print-rows (table-rows tab)))
 
-;   (print-table (table-natural-join countries cities))
