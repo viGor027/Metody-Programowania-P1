@@ -1,4 +1,5 @@
 #lang racket
+(require rackunit)
 
 (provide (struct-out column-info)
 				 (struct-out table)
@@ -44,6 +45,7 @@
 				 (list "Spain" 47))))
 
 (define (empty-table columns) (table columns '()))
+(define empty-tab (table '() '()))
 
 ; Wstawianie
 {define (list-len lista) ; funkcja sprawdzająca zgodność ilości pól
@@ -54,7 +56,9 @@
 {define (check-type str) ; funkcja pomocnicza do check-accordance
 		(cond [(equal? str 'boolean) (lambda (x) (boolean? x))]
 					[(equal? str 'string) (lambda (x) (string? x))]
-					[(equal? str 'number) (lambda (x) (number? x))])}
+					[(equal? str 'number) (lambda (x) (number? x))]
+					[(equal? str 'symbol) (lambda (x) (symbol? x))]
+					)}
 
 {define (check-accordance schema row) ; funkcja sprawdzająca zgodność typów pól
 		(cond [(and (null? schema) (null? row)) #t] 
@@ -123,11 +127,29 @@
 		  ]
 	)
 }
+; usunie z cols kolumny ktorcyh nie ma w schema
+{define (col-in-schema cols schema)
+	(define (helper col schema)
+		(cond [(empty? schema) #f]
+			  [(equal? (column-info-name (car schema)) col) #t]
+			  [else 
+			  	(helper col (rest schema))
+			  ]
+		)
+	)
+
+	(if (empty? cols) null
+		(if (helper (car cols) schema)
+			(cons (car cols) (col-in-schema (rest cols) schema))
+			(col-in-schema (rest cols) schema)
+		)
+	)
+}
 
 (define (table-project cols tab)
 
-	
-	(define indexes (sort (get-indexes cols (table-schema tab)) <))
+	(define new-cols (col-in-schema cols (table-schema tab)))
+	(define indexes (sort (get-indexes new-cols (table-schema tab)) <))
 	(define new-schema (get-schema indexes (table-schema tab)))
 	(define new-rows (get-cols indexes (table-rows tab)))
 	(table new-schema new-rows)
@@ -281,7 +303,7 @@
 			  ]
 		)
 	)
-	(table (append (table-schema tab1) (table-schema tab2)) (helper rows-tab1 rows-tab2 (list)) )
+	(table (append (table-schema tab1) (table-schema tab2)) (helper rows-tab1 rows-tab2 (list)))
 }
 
 ; Złączenie
@@ -367,4 +389,3 @@
             (print-rows (cdr t))]))
   (print-col-names (table-schema tab))
   (print-rows (table-rows tab)))
-
